@@ -7,7 +7,7 @@ Backend-only take-home, implemented with Laravel 13 / PHP 8.4 and SQLite. No UI,
 From the repository root, with PHP 8.4+ and Composer installed:
 
 ```bash
-composer install && php artisan migrate:fresh --seed && php artisan serve
+composer install && php -r "file_exists('.env') || copy('.env.example', '.env'); file_exists('database/database.sqlite') || touch('database/database.sqlite');" && php artisan key:generate && php artisan migrate:fresh --seed && php artisan serve
 ```
 
 SQLite is stored at `database/database.sqlite`. No MySQL installation required.
