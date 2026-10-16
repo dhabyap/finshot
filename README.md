@@ -38,11 +38,13 @@ Content-Type: application/json
 
 KRW values are stored as integer KRW. PHP receive amount is stored as integer minor units (centavos); API serializes it with exactly two decimal places. Fee is rounded to whole KRW using HALF_UP with 3,000 KRW minimum. FX is hard-coded to 0.0412 PHP per KRW and rounded HALF_UP to two decimal places. New transfers remain `REQUESTED`; cancellation is only allowed from that state.
 
+Create-request validation lives in `StoreTransferRequest`; transfer creation and idempotency live in `CreateTransfer`; fee and FX calculations live in `TransferAmountCalculator`; response formatting lives in `TransferResource`. Inputs too large for exact integer calculations are rejected with `VALIDATION_ERROR`.
+
 ## AI tools disclosure
 
-AI tool: OpenAI-compatible coding assistant via Hermes Agent.
-Used for: reviewing the assignment requirements, implementation suggestions, and test-case planning.
-All submitted code and results were run and reviewed locally; no generated result was fabricated.
+AI tools: All assignment code was generated with GPT Luna via 9Router, with Hermes Agent coordinating the workflow.
+Used for: assignment analysis, Laravel implementation, documentation, and test planning.
+The application and test suite were run locally; reported test results reflect the observed execution.
 
 ## Not implemented
 
