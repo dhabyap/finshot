@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Enums\TransferStatus;
+use App\Exceptions\TransferApiException;
 use App\Http\Requests\StoreTransferRequest;
 use App\Http\Resources\TransferResource;
 use App\Services\CreateTransfer;
+use App\Services\ReceivePartnerCallback;
+use App\Services\StartTransfer;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
@@ -23,6 +27,40 @@ class TransferController extends Controller
         }
 
         return response()->json(TransferResource::make($transfer), 201);
+    }
+
+    public function send(string $transferId, StartTransfer $startTransfer): JsonResponse
+    {
+        try {
+            $transfer = $startTransfer->handle($transferId);
+        } catch (TransferApiException $exception) {
+            return $this->error($exception->errorCode, $exception->getMessage(), $exception->httpStatus);
+        }
+
+        return response()->json(TransferResource::make($transfer));
+    }
+
+    public function callback(Request $request, ReceivePartnerCallback $receiveCallback): JsonResponse
+    {
+        $validator = validator($request->all(), [
+            'partnerRef' => ['required', 'string', 'max:100'],
+            'eventId' => ['required', 'string', 'max:100'],
+            'status' => ['required', 'in:COMPLETED'],
+        ]);
+        if ($validator->fails()) {
+            return $this->error('VALIDATION_ERROR', $validator->errors()->first(), 400);
+        }
+
+        try {
+            $transfer = $receiveCallback->handle(
+                $validator->validated()['partnerRef'],
+                $validator->validated()['eventId'],
+            );
+        } catch (TransferApiException $exception) {
+            return $this->error($exception->errorCode, $exception->getMessage(), $exception->httpStatus);
+        }
+
+        return response()->json(TransferResource::make($transfer));
     }
 
     public function show(string $transferId): JsonResponse

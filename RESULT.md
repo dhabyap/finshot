@@ -102,7 +102,7 @@ Status: `400`
 
 ## Automated verification
 
-On the final refactored code, `php artisan test` passed **10 tests, 22 assertions**. `php artisan migrate:fresh --force --seed` completed successfully, and `php artisan route:list --path=api` showed all three required endpoints.
+Before Part 2 was added, Part 1 tests passed **10 tests, 22 assertions**. After Part 2 implementation, the full suite passed **17 tests, 81 assertions**, including Seoul-midnight reset, cancellation/failure reservation release, and repeated-send idempotency. `php artisan migrate:fresh --force --seed` completed successfully, and `php artisan route:list --path=api` showed all five routes.
 
 The full S1–S6 flow was also repeated over HTTP against the refactored app at `http://127.0.0.1:8022`:
 
@@ -114,3 +114,42 @@ The full S1–S6 flow was also repeated over HTTP against the refactored app at 
 - S6 create, 5000 KRW: `400 VALIDATION_ERROR`.
 
 These are fresh HTTP checks on the final refactored code; the complete requests and captured response bodies for the original S1–S6 run are recorded above.
+
+## S7 — Daily limit (Part 2)
+
+All three transfers use customer `C002` on the same `Asia/Seoul` date. Submit first two; total reservation reaches exactly 3,000,000 KRW.
+
+- Create #1: `Idempotency-Key: final-s7-a`, `sendAmount: 1500003` → `201`, transfer `20df0427-ec65-4847-a782-2d50a09c6b2a`, status `REQUESTED`. Submit via `POST /api/transfers/20df0427-ec65-4847-a782-2d50a09c6b2a/send` → `200 SENDING`, reference suffix `3`.
+- Create #2: `Idempotency-Key: final-s7-b`, `sendAmount: 1499997` → `201`, transfer `976cc32b-d6ec-4293-be91-32f6ea57f79e`, status `REQUESTED`. Submit via `POST /api/transfers/976cc32b-d6ec-4293-be91-32f6ea57f79e/send` → `200 SENDING`, reference suffix `7`.
+- Create #3: `Idempotency-Key: final-s7-c`, `sendAmount: 10000` → `201`, transfer `35caeae6-8b88-4414-927b-71149446e325`, status `REQUESTED`. Submit → `422`:
+```json
+{"error":"LIMIT_EXCEEDED","message":"Daily transfer limit of 3000000 KRW exceeded"}
+```
+
+## S8 — Idempotent completion callback (Part 2)
+
+Create `500003` KRW with `Idempotency-Key: final-s8` → `201`, transfer `801ace3c-34d4-4c46-a4f0-d3e71a8a638a`. Submit it → `200`, status `SENDING`, partnerRef `pt_aebf769f-7039-4e2e-a273-ba48c8f950973`.
+
+Send this exact callback twice:
+```http
+POST /api/callbacks/partner
+Content-Type: application/json
+```
+```json
+{"partnerRef":"pt_aebf769f-7039-4e2e-a273-ba48c8f950973","eventId":"final-evt-s8","status":"COMPLETED"}
+```
+Both requests returned `200` with status `COMPLETED`. `GET /api/transfers/801ace3c-34d4-4c46-a4f0-d3e71a8a638a` returned `200`, `COMPLETED`; one callback event row was stored.
+
+## S9 — Deterministic partner failure (Part 2)
+
+Create `10000` KRW with `Idempotency-Key: final-s9` → `201`, transfer `ec876c6c-ed72-4fdf-92ef-336307f6894c`. Its generated partnerRef `pt_70052aff-d9bb-4b94-802a-879fce119a550` ends in `0`.
+
+Submit: `POST /api/transfers/ec876c6c-ed72-4fdf-92ef-336307f6894c/send` → `200`:
+```json
+{"transferId":"ec876c6c-ed72-4fdf-92ef-336307f6894c","status":"FAILED","sendAmount":"10000","fee":"3000","totalDebit":"13000","receiveAmount":"412.00","createdAt":"2026-10-17T00:00:23+00:00","partnerRef":"pt_70052aff-d9bb-4b94-802a-879fce119a550","failureReason":"Partner rejected all 3 attempts"}
+```
+The application log recorded exactly attempts 1, 2, and 3 as `failed` for that same partnerRef. Failed transfer released its daily-limit reservation.
+
+## Final automated verification
+
+`php artisan test` passed **17 tests, 81 assertions**. `php artisan migrate:fresh --force --seed` completed successfully, and `php artisan route:list --path=api` listed all five API routes.
