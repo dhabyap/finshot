@@ -1,13 +1,10 @@
-Final verification of refactored Part 1
+Final verification — Part 1 + Part 2
+Command: php artisan test
 
-Command: C:/laragon/bin/php/php-8.4.1-Win32-vs17-x64/php.exe artisan test
-Result: passed
-Tests: 10 passed, 0 failed
-Assertions: 22
-Duration: 833 ms
+{"tool":"phpunit","result":"passed","tests":17,"passed":17,"assertions":81,"duration_ms":4915}
 
-Command: C:/laragon/bin/php/php-8.4.1-Win32-vs17-x64/php.exe artisan migrate:fresh --force --seed
-Result: completed successfully; all four migrations ran and seeding completed.
-
-Command: C:/laragon/bin/php/php-8.4.1-Win32-vs17-x64/php.exe artisan route:list --path=api
-Result: listed POST api/transfers, GET|HEAD api/transfers/{transferId}, POST api/transfers/{transferId}/cancel.
+Additional checks:
+- php artisan migrate:fresh --force --seed: passed
+- php artisan route:list --path=api: five API routes listed
+- HTTP checks S7–S9: daily cap returned 422; callback replay returned same COMPLETED result; deterministic partner rejection logged three failed attempts and returned FAILED
+- Feature coverage: Seoul-timezone day rollover, cancellation/failure reservation release, repeated-send idempotency

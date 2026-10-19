@@ -22,12 +22,24 @@ CREATE TABLE transfers (
     status               VARCHAR(20) NOT NULL CHECK (status IN ('REQUESTED','SENDING','COMPLETED','FAILED','CANCELLED')),
     failure_reason       VARCHAR(255),
     partner_ref          VARCHAR(100) UNIQUE,
-    created_at           DATETIME NOT NULL,
+    limit_date           DATE,
+    created_at            DATETIME NOT NULL,
     updated_at           DATETIME NOT NULL,
     FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
 );
 CREATE INDEX idx_transfers_customer_created ON transfers(customer_id, created_at);
 CREATE INDEX idx_transfers_status ON transfers(status);
+CREATE INDEX idx_transfers_limit_date ON transfers(limit_date);
+
+CREATE TABLE daily_limit_usage (
+    customer_id     VARCHAR(10) NOT NULL,
+    limit_date      DATE NOT NULL,
+    used_amount_krw INTEGER NOT NULL DEFAULT 0,
+    created_at      DATETIME NOT NULL,
+    updated_at      DATETIME NOT NULL,
+    PRIMARY KEY (customer_id, limit_date),
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
 
 CREATE TABLE partner_callbacks (
     event_id    VARCHAR(100) PRIMARY KEY,
